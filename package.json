@@ -1,0 +1,24 @@
+{
+  "name": "cool_compiler",
+  "version": "1.0.0",
+  "description": "a simple compiler for cool language using javascript and lex/yacc libraries",
+  "homepage": "https://github.com/rafael-abrahao/CoolCompiler#readme",
+  "bugs": {
+    "url": "https://github.com/rafael-abrahao/CoolCompiler/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rafael-abrahao/CoolCompiler.git"
+  },
+  "license": "ISC",
+  "author": "Rafael",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "antlr4": "^4.13.2",
+    "jison": "^0.4.18"
+  }
+}
