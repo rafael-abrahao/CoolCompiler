@@ -145,6 +145,8 @@ parser.lexer.next = function() {
     return tokenId;
 };
 
-const input_arquivo = fs.readFileSync("exemplo_completo.cool", "utf8");
+const file = process.argv[2];
+
+const input_arquivo = fs.readFileSync(file || "exemplo_completo.cool", "utf8");
 
 parser.parse(input_arquivo);
