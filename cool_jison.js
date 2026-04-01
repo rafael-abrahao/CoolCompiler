@@ -25,6 +25,7 @@ const grammar = String.raw`
 %}
 
 %x BLOCK_COMMENT
+%x STRING
 
 %%
 
@@ -32,15 +33,44 @@ const grammar = String.raw`
 
 "--"[^\n]*              /* skip line comment */
 
-"(*"                        { this.commentDepth = 1; this.begin('BLOCK_COMMENT');}
+"(*"                        { 
+                                this.commentDepth = 1; 
+                                this.begin('BLOCK_COMMENT');
+                            }
 
-<BLOCK_COMMENT>"(*"         { this.commentDepth++;}
-<BLOCK_COMMENT>"*)"         { this.commentDepth--; if(this.commentDepth === 0) this.begin('INITIAL'); }
-<BLOCK_COMMENT>[^*(\n]+     /* consome texto comum */
-<BLOCK_COMMENT>"*"          /* consome * isolado */
-<BLOCK_COMMENT>"("          /* consome ( isolado */
+<BLOCK_COMMENT>"(*"         this.commentDepth++;
+<BLOCK_COMMENT>"*)"         { 
+                                this.commentDepth--; 
+                                if(this.commentDepth === 0) 
+                                    this.popState(); 
+                            }
+<BLOCK_COMMENT><<EOF>>      throw new Error("Comentário não fechado!");
+<BLOCK_COMMENT>.            /* consome texto comum */
 <BLOCK_COMMENT>\n           /* consome quebras de linha */
-<BLOCK_COMMENT><<EOF>>      { throw new Error("Comentário não fechado!"); }
+
+\"                          {
+                                this.stringBuffer = ""; 
+                                this.begin("STRING");
+                            }
+
+<STRING>\"                  {
+                                this.popState();
+                                yytext = this.stringBuffer;
+                                return 'STRING';
+                            }
+
+<STRING>\\b                 this.stringBuffer += '\b';
+<STRING>\\t                 this.stringBuffer += '\t';
+<STRING>\\n                 this.stringBuffer += '\n';
+<STRING>\\f                 this.stringBuffer += '\f';
+
+<STRING>\\(.)               this.stringBuffer += yytext[1];
+
+<STRING>\\\n                /* consome quebra de linha escapada */
+<STRING>\n                  throw new Error("Unterminated string constant");
+<STRING>\0                  throw new Error("String contains null character");
+<STRING><<EOF>>             throw new Error("EOF in string constant");
+<STRING>.                   this.stringBuffer += yytext;
 
 "("                     return '(';
 ")"                     return ')';
@@ -88,7 +118,7 @@ program
 token
     : CLASS | ELSE | FALSE | FI | IF | IN | INHERITS | ISVOID | LET | LOOP 
     | POOL | THEN | WHILE | CASE | ESAC | NEW | OF | NOT | TRUE
-    | OBJECTID | TYPEID | INT | SELF_TYPE | EOF 
+    | OBJECTID | TYPEID | INT | SELF_TYPE | EOF | STRING
     | '(' | ')' | '{' | '}' | '[' | ']'
     | ';' | '.'
     | '+' | '-' | '*' | '/'
@@ -115,6 +145,9 @@ parser.lexer.next = function() {
 teste = String.raw`
 (* testando (* aninhado *) comentario
  em bloco *)
+
+"isso aqui eh\
+ uma string"
 
 if(nome){ --comentário em linha
     5 + 1;
