@@ -84,6 +84,10 @@ const grammar = String.raw`
 "*"                     return '*';
 "/"                     return '/';
 
+"<="                    return '<=';
+"<"                     return '<';
+"="                     return '=';
+
 "<-"                    return '<-';
 "=>"                    return '=>';
 
@@ -116,12 +120,7 @@ program
     ;
 
 token
-    : CLASS | ELSE | FALSE | FI | IF | IN | INHERITS | ISVOID | LET | LOOP 
-    | POOL | THEN | WHILE | CASE | ESAC | NEW | OF | NOT | TRUE
-    | OBJECTID | TYPEID | INT | SELF_TYPE | EOF | STRING
-    | '(' | ')' | '{' | '}' | '[' | ']'
-    | ';' | '.'
-    | '+' | '-' | '*' | '/'
+    : error
     ;
 `
 
