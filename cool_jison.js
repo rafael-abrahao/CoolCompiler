@@ -1,4 +1,5 @@
-var Parser = require("jison").Parser;
+const Parser = require("jison").Parser;
+const fs = require("fs");
 
 const grammar = String.raw`
 %lex
@@ -29,9 +30,10 @@ const grammar = String.raw`
 
 %%
 
-[ \n\f\r\t\v]+          /* skip whitespace */
+[ \f\t\v]+                  /* skip whitespace */
+\r?\n                       /* skip line break */
 
-"--"[^\n]*              /* skip line comment */
+"--"[^\n]*                  /* skip line comment */
 
 "(*"                        { 
                                 this.commentDepth = 1; 
@@ -45,8 +47,8 @@ const grammar = String.raw`
                                     this.popState(); 
                             }
 <BLOCK_COMMENT><<EOF>>      throw new Error("Comentário não fechado!");
-<BLOCK_COMMENT>.            /* consome texto comum */
-<BLOCK_COMMENT>\n           /* consome quebras de linha */
+<BLOCK_COMMENT>\r?\n        /* consome quebras de linha */
+<BLOCK_COMMENT>[^]          /* consome texto comum */
 
 \"                          {
                                 this.stringBuffer = ""; 
@@ -72,41 +74,43 @@ const grammar = String.raw`
 <STRING><<EOF>>             throw new Error("EOF in string constant");
 <STRING>.                   this.stringBuffer += yytext;
 
-"("                     return '(';
-")"                     return ')';
-"{"                     return '{';
-"}"                     return '}';
-"["                     return '[';
-"]"                     return ']';
+"("                         return '(';
+")"                         return ')';
+"{"                         return '{';
+"}"                         return '}';
+"["                         return '[';
+"]"                         return ']';
 
-"+"                     return '+';
-"-"                     return '-';
-"*"                     return '*';
-"/"                     return '/';
+"+"                         return '+';
+"-"                         return '-';
+"*"                         return '*';
+"/"                         return '/';
 
-"<="                    return '<=';
-"<"                     return '<';
-"="                     return '=';
+"<-"                        return '<-';
+"=>"                        return '=>';
 
-"<-"                    return '<-';
-"=>"                    return '=>';
+"~"                         return 'NOT';
+"<="                        return '<=';
+"<"                         return '<';
+"="                         return '=';
 
-"."                     return '.';
-";"                     return ';';
-":"                     return ':';
-"@"                     return '@';
+"."                         return '.';
+";"                         return ';';
+","                         return ',';
+":"                         return ':';
+"@"                         return '@';
 
-t[rR][uU][eE]           return 'TRUE';
-f[aA][lL][sS][eE]       return 'FALSE';
+t[rR][uU][eE]               return 'TRUE';
+f[aA][lL][sS][eE]           return 'FALSE';
 
-SELF_TYPE               return 'SELF_TYPE';
+SELF_TYPE                   return 'SELF_TYPE';
 
-[a-z][a-zA-Z0-9_]*      return KEYWORDS[yytext.toLowerCase()] || 'OBJECTID';
-[A-Z][a-zA-Z0-9_]*      return KEYWORDS[yytext.toLowerCase()] || 'TYPEID';
+[a-z][a-zA-Z0-9_]*          return KEYWORDS[yytext.toLowerCase()] || 'OBJECTID';
+[A-Z][a-zA-Z0-9_]*          return KEYWORDS[yytext.toLowerCase()] || 'TYPEID';
 
-[0-9]+                  return 'INT';
+[0-9]+                      return 'INT';
 
-<<EOF>>                 return 'EOF';
+<<EOF>>                     return 'EOF';
 
 /lex
 
@@ -141,17 +145,6 @@ parser.lexer.next = function() {
     return tokenId;
 };
 
-teste = String.raw`
-(* testando (* aninhado *) comentario
- em bloco *)
+const input_arquivo = fs.readFileSync("exemplo_completo.cool", "utf8");
 
-"isso aqui eh\
- uma string"
-
-if(nome){ --comentário em linha
-    5 + 1;
-    nome.metodo(argumento);
-}
-`
-
-parser.parse(teste);
+parser.parse(input_arquivo);

@@ -1,0 +1,103 @@
+(* Programa de teste para lexer COOL 
+Inclui a maioria das construções da linguagem *)
+
+(* Comentário aninhado
+(* nível 2 *)
+*)
+
+class Main inherits IO {
+
+-- atributo
+counter : Int <- 0;
+
+message : String <- "Hello\nWorld\tCOOL";
+
+flag : Bool <- true;
+
+main() : Object {
+
+    {
+        out_string("Starting program...\n");
+
+        -- declaração com let
+        let x : Int <- 5,
+            y : Int <- 10,
+            text : String <- "Value:\t"
+        in {
+
+            out_string(text);
+            out_int(x + y);
+
+            if x < y then
+                out_string("\nx is smaller\n")
+            else
+                out_string("\ny is smaller\n")
+            fi;
+
+            -- while loop
+            while x < 20 loop
+            {
+                x <- x + 1;
+                out_int(x);
+            }
+            pool;
+
+            -- case expression
+            case x of
+                a : Int => out_string("Integer\n");
+                b : Bool => out_string("Boolean\n");
+                c : String => out_string("String\n");
+            esac;
+
+            -- criação de objeto
+            counter <- (new Int);
+
+            -- uso de isvoid
+            if isvoid counter then
+                out_string("Counter is void\n")
+            else
+                out_string("Counter exists\n")
+            fi;
+
+            -- dispatch dinâmico
+            self.out_string("Dynamic dispatch\n");
+
+            -- static dispatch
+            self@IO.out_string("Static dispatch\n");
+
+            -- operador not
+            if not flag then
+                out_string("Flag false\n")
+            else
+                out_string("Flag true\n")
+            fi;
+
+            -- complemento aritmético
+            counter <- ~x;
+
+            -- expressão em bloco
+            {
+                out_string("Nested block\n");
+                out_int(counter);
+            };
+
+        };
+
+        out_string("Program finished.\n");
+
+    }
+};
+
+};
+
+(* classe adicional para testar TYPEID *)
+
+class Helper {
+
+value : Int <- 42;
+
+getValue() : Int {
+    value
+};
+
+};
