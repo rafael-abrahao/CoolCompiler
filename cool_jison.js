@@ -114,6 +114,7 @@ SELF_TYPE                   return 'SELF_TYPE';
 
 /lex
 
+%right IN
 %right '<-'
 %left NOT
 %nonassoc '<=' '<' '='
@@ -129,7 +130,7 @@ SELF_TYPE                   return 'SELF_TYPE';
 %%
 
 program
-    : class_list EOF   { $$ = $1; }
+    : class_list EOF   { return $1; }
     ;
 
 class_list
@@ -179,7 +180,7 @@ expr
     | expr '.' OBJECTID '(' arg_list ')'
         { $$ = { type: 'dispatch', object: $1, method: $3, args: $5}; }
     | expr '@' TYPEID '.' OBJECTID '(' arg_list ')'
-        { $$ = { type: 'static_dispatch', object: $1, castType: $3 method: $5, args: $7}; }
+        { $$ = { type: 'static_dispatch', object: $1, castType: $3, method: $5, args: $7}; }
     | OBJECTID '(' arg_list ')'
         { $$ = { type: 'self_dispatch', method: $1, args: $3}; }
 
@@ -196,7 +197,7 @@ expr
         { $$ = { type: 'block', exprs: $2 }; }
 
     /* Let */
-    | LET let_binding_list IN expr
+    | LET let_binding_list IN expr %prec IN
         { $$ = { type: 'let', bindings: $2, body: $4 }; }
 
     /* Case */
@@ -267,23 +268,8 @@ block_expr_list
 
 const parser = new Parser(grammar);
 
-const _next = parser.lexer.next;
+const exemplo_completo = fs.readFileSync("exemplo_completo.cool", "utf8");
+const exemplo_basico = fs.readFileSync("exemplo_basico.cool", "utf8");
 
-const symbolsInverted = Object.fromEntries(
-    Object.entries(parser.symbols_).map(([name, id]) => [id, name])
-);
-
-parser.lexer.next = function() {
-    const tokenId = _next.call(this);
-    
-    const tokenName = symbolsInverted[tokenId] || tokenId;
-    if(tokenName)
-        console.log(`Token: ${tokenName} -> "${this.yytext}"`);
-    return tokenId;
-};
-
-const file = process.argv[2];
-
-const input_arquivo = fs.readFileSync(file || "exemplo_completo.cool", "utf8");
-
-parser.parse(input_arquivo);
+const result = parser.parse(exemplo_basico);
+console.log(JSON.stringify(result, null, 2));
