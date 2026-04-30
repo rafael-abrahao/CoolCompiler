@@ -272,4 +272,6 @@ const exemplo_completo = fs.readFileSync("exemplo_completo.cool", "utf8");
 const exemplo_basico = fs.readFileSync("exemplo_basico.cool", "utf8");
 
 const result = parser.parse(exemplo_basico);
-console.log(JSON.stringify(result, null, 2));
+const ast = JSON.stringify(result, null, 2);
+
+fs.writeFileSync("ast.json", ast, "utf8");

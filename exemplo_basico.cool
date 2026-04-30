@@ -1,5 +1,6 @@
+-- testa_let.cool
 class Main {
     main() : Int {
-        1 + 2
+        let x : Int <- 1, y : Int <- 2 in x + y
     };
 };
