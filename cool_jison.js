@@ -89,7 +89,7 @@ const grammar = String.raw`
 "<-"                        return '<-';
 "=>"                        return '=>';
 
-"~"                         return 'NOT';
+"~"                         return '~';
 "<="                        return '<=';
 "<"                         return '<';
 "="                         return '=';
@@ -200,7 +200,7 @@ expr
         { $$ = { type: 'let', bindings: $2, body: $4 }; }
 
     /* Case */
-    | CASE expr OF case_enty_list ESAC
+    | CASE expr OF case_branch_list ESAC
         { $$ = { type: 'case', expr: $2, branches: $4 }; }
 
     /* Operações aritméticas e comparações */
@@ -244,9 +244,9 @@ let_binding_list
 
 let_binding
     : OBJECTID ':' TYPEID '<-' expr
-        { $$ = { name = $1, declType: $3, init: $5 }; }
+        { $$ = { name: $1, declType: $3, init: $5 }; }
     | OBJECTID ':' TYPEID
-        { $$ = { name = $1, declType: $3, init: null }; }
+        { $$ = { name: $1, declType: $3, init: null }; }
     ;
 
 case_branch_list
