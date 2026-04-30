@@ -47,7 +47,7 @@ const grammar = String.raw`
                                     this.popState(); 
                             }
 <BLOCK_COMMENT><<EOF>>      throw new Error("Comentário não fechado!");
-<BLOCK_COMMENT>\r?\n        /* consome quebras de linha */
+<BLOCK_COMMENT>\r?\n        /*git  consome quebras de linha */
 <BLOCK_COMMENT>[^]          /* consome texto comum */
 
 \"                          {
@@ -114,17 +114,154 @@ SELF_TYPE                   return 'SELF_TYPE';
 
 /lex
 
+%right '<-'
+%left NOT
+%nonassoc '<=' '<' '='
+%left '+' '-'
+%left '*' '/'
+%left ISVOID
+%left '~'
+%left '@'
+%left '.'
+
 %start program
 
 %%
 
 program
-    : program token
-    | /* vazio */
+    : class_list EOF   { $$ = $1; }
     ;
 
-token
-    : error
+class_list
+    : class_list class ';'   { $$ = [...$1, $2]; }
+    | class ';'              { $$ = [$1]; }
+    ;
+
+class
+    : CLASS TYPEID '{' feature_list '}'
+        { $$ = { type: 'class', name: $2, parent: 'Object', features: $4 }; }
+    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}'
+        { $$ = { type: 'class', name: $2, parent: $4, features: $6 }; }
+    ;
+
+feature_list
+    : feature_list feature ';'  { $$ = [...$1, $2]; }
+    |                           { $$ = []; }
+    ;
+
+/* Um feature é um método ou um atributo */
+feature
+    : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
+        { $$ = { type: 'method', name: $1, formals: $3, returnType: $6, body: $8 }; }
+    | OBJECTID ':' TYPEID '<-' expr
+        { $$ = { type: 'attribute', name: $1, declType: $3, init: $5 }; }
+    | OBJECTID ':' TYPEID
+        { $$ = { type: 'attribute', name: $1, declType: $3, init: null }; }
+    ;
+
+formal_list
+    : formal_list ',' formal  { $$ = [...$1, $3]; }
+    | formal                  { $$ = [$1]; }
+    |                         { $$ = []; }
+    ;
+
+formal
+    : OBJECTID ':' TYPEID
+        { $$ = { name: $1, declType: $3 }; }
+    ;
+
+expr
+    /* Atribuição */
+    : OBJECTID '<-' expr
+        { $$ = { type: 'assign', name: $1, expr: $3 }; }
+
+    /* Dispatch */
+    | expr '.' OBJECTID '(' arg_list ')'
+        { $$ = { type: 'dispatch', object: $1, method: $3, args: $5}; }
+    | expr '@' TYPEID '.' OBJECTID '(' arg_list ')'
+        { $$ = { type: 'static_dispatch', object: $1, castType: $3 method: $5, args: $7}; }
+    | OBJECTID '(' arg_list ')'
+        { $$ = { type: 'self_dispatch', method: $1, args: $3}; }
+
+    /* If */
+    | IF expr THEN expr ELSE expr FI
+        { $$ = { type: 'if', pred: $2, thenExpr: $4, elseExpr: $6 }; }
+
+    /* While */
+    | WHILE expr LOOP expr POOL
+        { $$ = { type: 'while', pred: $2, body: $4 }; }
+
+    /* Bloco */
+    | '{' block_expr_list '}'
+        { $$ = { type: 'block', exprs: $2 }; }
+
+    /* Let */
+    | LET let_binding_list IN expr
+        { $$ = { type: 'let', bindings: $2, body: $4 }; }
+
+    /* Case */
+    | CASE expr OF case_enty_list ESAC
+        { $$ = { type: 'case', expr: $2, branches: $4 }; }
+
+    /* Operações aritméticas e comparações */
+    | expr '+' expr   { $$ = { type: 'binop', op: '+', left: $1, right: $3 }; }
+    | expr '-' expr   { $$ = { type: 'binop', op: '-', left: $1, right: $3 }; }
+    | expr '*' expr   { $$ = { type: 'binop', op: '*', left: $1, right: $3 }; }
+    | expr '/' expr   { $$ = { type: 'binop', op: '/', left: $1, right: $3 }; }
+    | expr '<' expr   { $$ = { type: 'binop', op: '<',  left: $1, right: $3 }; }
+    | expr '<=' expr  { $$ = { type: 'binop', op: '<=', left: $1, right: $3 }; }
+    | expr '=' expr   { $$ = { type: 'binop', op: '=',  left: $1, right: $3 }; }
+
+    /* Unários */
+    | '~' expr        { $$ = { type: 'neg',    expr: $2 }; }
+    | NOT expr        { $$ = { type: 'not',    expr: $2 }; }
+    | ISVOID expr     { $$ = { type: 'isvoid', expr: $2 }; }
+
+    /* new */
+    | NEW TYPEID      { $$ = { type: 'new', typeName: $2 }; }
+
+    /* Parênteses */
+    | '(' expr ')'    { $$ = $2; }
+
+    /* Literais e identificadores */
+    | OBJECTID        { $$ = { type: 'object', name: $1 }; }
+    | INT             { $$ = { type: 'int',    value: Number($1) }; }
+    | STRING          { $$ = { type: 'string', value: $1 }; }
+    | TRUE            { $$ = { type: 'bool',   value: true }; }
+    | FALSE           { $$ = { type: 'bool',   value: false }; }
+    ;
+
+arg_list
+    : arg_list ',' expr                 {$$ = [...$1, $3]; }
+    | expr                              {$$ = [$1]; }
+    |                                   {$$ = []; }
+    ;
+
+let_binding_list
+    : let_binding_list ',' let_binding  {$$ = [...$1, $3]; }
+    | let_binding                       {$$ = [$1]; }
+    ;
+
+let_binding
+    : OBJECTID ':' TYPEID '<-' expr
+        { $$ = { name = $1, declType: $3, init: $5 }; }
+    | OBJECTID ':' TYPEID
+        { $$ = { name = $1, declType: $3, init: null }; }
+    ;
+
+case_branch_list
+    : case_branch_list case_branch ';'  { $$ = [...$1, $2]; }
+    | case_branch ';'                   { $$ = [$1]; }
+    ;
+
+case_branch
+    : OBJECTID ':' TYPEID '=>' expr     
+        { $$ = { name: $1, declType: $3, body: $5}; }
+    ;
+
+block_expr_list
+    : block_expr_list expr ';'          { $$ = [...$1, $2]; }
+    | expr ';'                          { $$ = [$1]; }
     ;
 `
 
