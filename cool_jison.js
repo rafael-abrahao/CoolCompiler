@@ -1,5 +1,6 @@
 const Parser = require("jison").Parser;
 const fs = require("fs");
+const SemanticAnalyzer = require("./analise_semantica.js");
 
 const grammar = String.raw`
 %lex
@@ -264,14 +265,24 @@ block_expr_list
     : block_expr_list expr ';'          { $$ = [...$1, $2]; }
     | expr ';'                          { $$ = [$1]; }
     ;
-`
+`;
 
 const parser = new Parser(grammar);
 
 const exemplo_completo = fs.readFileSync("exemplo_completo.cool", "utf8");
 const exemplo_basico = fs.readFileSync("exemplo_basico.cool", "utf8");
 
-const result = parser.parse(exemplo_basico);
-const ast = JSON.stringify(result, null, 2);
+const ast = parser.parse(exemplo_basico);
+const errors = new SemanticAnalyzer(ast).analyze();
 
-fs.writeFileSync("ast.json", ast, "utf8");
+if (errors.length > 0) {
+    console.log("Erros semânticos encontrados:");
+    errors.forEach(e => console.log(" •", e));
+    process.exit(1);
+} else {
+    console.log("Análise semântica ok");
+    fs.writeFileSync("ast.json", JSON.stringify(ast, null, 2), "utf8");
+}
+// const ast = JSON.stringify(result, null, 2);
+
+// fs.writeFileSync("ast.json", ast, "utf8");
