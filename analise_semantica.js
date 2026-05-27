@@ -1,10 +1,11 @@
 class SemanticAnalyzer {
 
     constructor(ast) {
-        this.ast        = ast;
-        this.classTable = {};
-        this.scopes     = [];
-        this.errors     = [];
+        this.ast          = ast;
+        this.classTable   = {};
+        this.scopes       = [];
+        this.errors       = [];
+        this.currentClass = null;
     }
 
     analyze() {
@@ -13,14 +14,26 @@ class SemanticAnalyzer {
         return this.errors;
     }
 
-    error(msg) {
-        this.errors.push(msg);
+    // ─── Erros com localização ────────────────────────────────────────────────
+
+    error(msg, node = null) {
+        const loc = (node?.line != null)
+            ? ` [linha ${node.line}, coluna ${node.col ?? '?'}]`
+            : '';
+        this.errors.push(`${msg}${loc}`);
+    }
+
+    // ─── SELF_TYPE ────────────────────────────────────────────────────────────
+
+    // Resolve SELF_TYPE para o nome da classe atual em qualquer contexto
+    resolveSelfType(type) {
+        return type === 'SELF_TYPE' ? this.currentClass : type;
     }
 
     // ─── Escopo ────────────────────────────────────────────────────────────────
 
-    enterScope()  { this.scopes.push(new Map()); }
-    exitScope()   { this.scopes.pop(); }
+    enterScope() { this.scopes.push(new Map()); }
+    exitScope()  { this.scopes.pop(); }
 
     addVar(name, type) {
         this.scopes.at(-1).set(name, type);
@@ -28,18 +41,16 @@ class SemanticAnalyzer {
 
     lookupVar(name) {
         for (let i = this.scopes.length - 1; i >= 0; i--) {
-            if (this.scopes[i].has(name))
-                return this.scopes[i].get(name);
+            if (this.scopes[i].has(name)) return this.scopes[i].get(name);
         }
         return null;
     }
 
     // ─── Hierarquia de tipos ───────────────────────────────────────────────────
 
-    // Retorna todos os ancestrais de um tipo incluindo ele mesmo
     ancestors(type) {
-        const result = new Set();
-        let current = type;
+        const result  = new Set();
+        let current   = this.resolveSelfType(type);
         while (current) {
             result.add(current);
             current = this.classTable[current]?.parent;
@@ -47,22 +58,22 @@ class SemanticAnalyzer {
         return result;
     }
 
-    // Verifica se child é igual a parent ou descende dele
     conforms(child, parent) {
-        if (child === parent)  return true;
-        if (parent === 'Object') return true;
-        let current = this.classTable[child]?.parent;
+        const c = this.resolveSelfType(child);
+        const p = this.resolveSelfType(parent);
+        if (c === p)         return true;
+        if (p === 'Object')  return true;
+        let current = this.classTable[c]?.parent;
         while (current) {
-            if (current === parent) return true;
+            if (current === p) return true;
             current = this.classTable[current]?.parent;
         }
         return false;
     }
 
-    // Ancestral comum mais próximo — usado para o tipo do if/case
     join(typeA, typeB) {
         const ancestorsA = this.ancestors(typeA);
-        let current = typeB;
+        let current      = this.resolveSelfType(typeB);
         while (current) {
             if (ancestorsA.has(current)) return current;
             current = this.classTable[current]?.parent;
@@ -73,41 +84,60 @@ class SemanticAnalyzer {
     // ─── Passagem 1: tabela de classes ────────────────────────────────────────
 
     buildClassTable() {
-        // Classes básicas do COOL
+        // Classes básicas com seus métodos definidos pelo manual
         const builtins = {
-            Object: { name: 'Object', parent: null,     features: [] },
-            IO:     { name: 'IO',     parent: 'Object', features: [] },
-            Int:    { name: 'Int',    parent: 'Object', features: [] },
-            String: { name: 'String', parent: 'Object', features: [] },
-            Bool:   { name: 'Bool',   parent: 'Object', features: [] },
+            Object: {
+                name: 'Object', parent: null, features: [
+                    { type: 'method', name: 'abort',     formals: [],                                                              returnType: 'Object'    },
+                    { type: 'method', name: 'type_name', formals: [],                                                              returnType: 'String'    },
+                    { type: 'method', name: 'copy',      formals: [],                                                              returnType: 'SELF_TYPE' },
+                ]
+            },
+            IO: {
+                name: 'IO', parent: 'Object', features: [
+                    { type: 'method', name: 'out_string', formals: [{ name: 'x', declType: 'String' }], returnType: 'SELF_TYPE' },
+                    { type: 'method', name: 'out_int',    formals: [{ name: 'x', declType: 'Int'    }], returnType: 'SELF_TYPE' },
+                    { type: 'method', name: 'in_string',  formals: [],                                  returnType: 'String'    },
+                    { type: 'method', name: 'in_int',     formals: [],                                  returnType: 'Int'       },
+                ]
+            },
+            Int:  { name: 'Int',  parent: 'Object', features: [] },
+            Bool: { name: 'Bool', parent: 'Object', features: [] },
+            String: {
+                name: 'String', parent: 'Object', features: [
+                    { type: 'method', name: 'length', formals: [],                                                                                    returnType: 'Int'    },
+                    { type: 'method', name: 'concat', formals: [{ name: 's', declType: 'String' }],                                                   returnType: 'String' },
+                    { type: 'method', name: 'substr', formals: [{ name: 'i', declType: 'Int' }, { name: 'l', declType: 'Int' }],                      returnType: 'String' },
+                ]
+            },
         };
         Object.assign(this.classTable, builtins);
 
         // Coleta as classes do programa
         for (const cls of this.ast) {
             if (this.classTable[cls.name]) {
-                this.error(`Classe '${cls.name}' já definida`);
+                this.error(`Classe '${cls.name}' já definida`, cls);
                 continue;
             }
             this.classTable[cls.name] = cls;
         }
 
-        // Verifica se os pais existem e se não há herança de classes básicas
+        // Verifica pais e herança proibida
         const noInherit = ['Int', 'String', 'Bool'];
         for (const cls of this.ast) {
             if (!this.classTable[cls.parent])
-                this.error(`Classe '${cls.name}' herda de '${cls.parent}' que não existe`);
+                this.error(`Classe '${cls.name}' herda de '${cls.parent}' que não existe`, cls);
             if (noInherit.includes(cls.parent))
-                this.error(`Classe '${cls.name}' não pode herdar de '${cls.parent}'`);
+                this.error(`Classe '${cls.name}' não pode herdar de '${cls.parent}'`, cls);
         }
 
         // Verifica ciclos na hierarquia
         for (const cls of this.ast) {
             const visited = new Set();
-            let current = cls.name;
+            let current   = cls.name;
             while (current) {
                 if (visited.has(current)) {
-                    this.error(`Ciclo na herança envolvendo '${cls.name}'`);
+                    this.error(`Ciclo na herança envolvendo '${cls.name}'`, cls);
                     break;
                 }
                 visited.add(current);
@@ -115,7 +145,7 @@ class SemanticAnalyzer {
             }
         }
 
-        // Verifica se existe classe Main com método main
+        // Verifica classe Main
         if (!this.classTable['Main']) {
             this.error("Classe 'Main' não definida");
         } else {
@@ -124,7 +154,50 @@ class SemanticAnalyzer {
             if (!mainMethod)
                 this.error("Classe 'Main' não possui método 'main'");
             else if (mainMethod.formals.length > 0)
-                this.error("Método 'main' não pode ter parâmetros");
+                this.error("Método 'main' não pode ter parâmetros", mainMethod);
+        }
+    }
+
+    // ─── Override checking ─────────────────────────────────────────────────────
+
+    checkOverride(cls) {
+        for (const feature of cls.features) {
+            if (feature.type !== 'method') continue;
+
+            // Busca apenas nos ancestrais (não na classe atual)
+            const parentMethod = this.lookupMethod(cls.parent, feature.name);
+            if (!parentMethod) continue;   // método novo, não é override
+
+            // Mesmo número de parâmetros
+            if (feature.formals.length !== parentMethod.formals.length) {
+                this.error(
+                    `Override '${cls.name}.${feature.name}': ` +
+                    `pai tem ${parentMethod.formals.length} parâmetro(s), ` +
+                    `filho tem ${feature.formals.length}`,
+                    feature
+                );
+                continue;
+            }
+
+            // Mesmo tipo em cada parâmetro
+            for (let i = 0; i < feature.formals.length; i++) {
+                const childType  = feature.formals[i].declType;
+                const parentType = parentMethod.formals[i].declType;
+                if (childType !== parentType)
+                    this.error(
+                        `Override '${cls.name}.${feature.name}': ` +
+                        `parâmetro ${i + 1} é '${childType}' mas pai declara '${parentType}'`,
+                        feature.formals[i]
+                    );
+            }
+
+            // Mesmo tipo de retorno
+            if (feature.returnType !== parentMethod.returnType)
+                this.error(
+                    `Override '${cls.name}.${feature.name}': ` +
+                    `retorno é '${feature.returnType}' mas pai declara '${parentMethod.returnType}'`,
+                    feature
+                );
         }
     }
 
@@ -133,22 +206,28 @@ class SemanticAnalyzer {
     checkClasses() {
         for (const cls of this.ast) {
             this.currentClass = cls.name;
+
+            this.checkOverride(cls);
+
             this.enterScope();
 
-            // self sempre disponível com o tipo da classe atual
-            this.addVar('self', cls.name);
+            // self tem tipo SELF_TYPE — resolvido para o nome da classe no momento do uso
+            this.addVar('self', 'SELF_TYPE');
 
             // Atributos visíveis em toda a classe
             for (const f of cls.features) {
                 if (f.type === 'attribute') {
-                    if (!this.classTable[f.declType])
-                        this.error(`Atributo '${f.name}': tipo '${f.declType}' não existe`);
+                    if (f.name === 'self')
+                        this.error(`Atributo não pode se chamar 'self'`, f);
+                    const resolvedType = this.resolveSelfType(f.declType);
+                    if (!this.classTable[resolvedType])
+                        this.error(`Atributo '${f.name}': tipo '${f.declType}' não existe`, f);
                     this.addVar(f.name, f.declType);
+                    f.coolType = f.declType;   // anota na AST
                 }
             }
 
-            for (const f of cls.features)
-                this.checkFeature(f);
+            for (const f of cls.features) this.checkFeature(f);
 
             this.exitScope();
         }
@@ -156,16 +235,21 @@ class SemanticAnalyzer {
 
     checkFeature(feature) {
         if (feature.type === 'method') {
-            // Verifica se o tipo de retorno existe
-            if (!this.classTable[feature.returnType])
-                this.error(`Método '${feature.name}': tipo de retorno '${feature.returnType}' não existe`);
+            // SELF_TYPE é válido como retorno — só verifica se não for SELF_TYPE
+            const resolvedReturn = this.resolveSelfType(feature.returnType);
+            if (feature.returnType !== 'SELF_TYPE' && !this.classTable[resolvedReturn])
+                this.error(
+                    `Método '${feature.name}': tipo de retorno '${feature.returnType}' não existe`,
+                    feature
+                );
 
             this.enterScope();
 
-            // Parâmetros formais
             for (const formal of feature.formals) {
+                if (formal.name === 'self')
+                    this.error(`Parâmetro não pode se chamar 'self'`, formal);
                 if (!this.classTable[formal.declType])
-                    this.error(`Parâmetro '${formal.name}': tipo '${formal.declType}' não existe`);
+                    this.error(`Parâmetro '${formal.name}': tipo '${formal.declType}' não existe`, formal);
                 this.addVar(formal.name, formal.declType);
             }
 
@@ -174,50 +258,61 @@ class SemanticAnalyzer {
             if (!this.conforms(bodyType, feature.returnType))
                 this.error(
                     `Método '${feature.name}': corpo tem tipo '${bodyType}' ` +
-                    `mas declarou retornar '${feature.returnType}'`
+                    `mas declarou retornar '${feature.returnType}'`,
+                    feature
                 );
 
+            feature.coolType = feature.returnType;   // anota na AST
             this.exitScope();
 
         } else {
-            // Atributo com inicialização
             if (feature.init) {
                 const initType = this.checkExpr(feature.init);
                 if (!this.conforms(initType, feature.declType))
                     this.error(
                         `Atributo '${feature.name}': inicializado com '${initType}' ` +
-                        `mas declarado como '${feature.declType}'`
+                        `mas declarado como '${feature.declType}'`,
+                        feature
                     );
             }
+            feature.coolType = feature.declType;   // anota na AST
         }
     }
 
     // ─── Verificação de expressões ────────────────────────────────────────────
 
     checkExpr(expr) {
+        let inferredType;
+
         switch (expr.type) {
 
-            case 'int':    return 'Int';
-            case 'string': return 'String';
-            case 'bool':   return 'Bool';
+            case 'int':    inferredType = 'Int';    break;
+            case 'string': inferredType = 'String'; break;
+            case 'bool':   inferredType = 'Bool';   break;
 
             case 'object': {
                 const type = this.lookupVar(expr.name);
                 if (!type)
-                    this.error(`Identificador '${expr.name}' não declarado`);
-                return type || 'Object';
+                    this.error(`Identificador '${expr.name}' não declarado`, expr);
+                // self retorna SELF_TYPE — será resolvido no contexto de uso
+                inferredType = type || 'Object';
+                break;
             }
 
             case 'assign': {
+                if (expr.name === 'self')
+                    this.error(`Não é permitido atribuir a 'self'`, expr);
                 const varType  = this.lookupVar(expr.name);
                 const exprType = this.checkExpr(expr.expr);
                 if (!varType)
-                    this.error(`Atribuição: '${expr.name}' não declarado`);
+                    this.error(`Atribuição: '${expr.name}' não declarado`, expr);
                 else if (!this.conforms(exprType, varType))
                     this.error(
-                        `Atribuição: '${exprType}' não é compatível com '${varType}'`
+                        `Atribuição: '${exprType}' não é compatível com '${varType}'`,
+                        expr
                     );
-                return exprType;
+                inferredType = exprType;
+                break;
             }
 
             case 'binop': {
@@ -225,158 +320,189 @@ class SemanticAnalyzer {
                 const right = this.checkExpr(expr.right);
                 const arith = ['+', '-', '*', '/'];
                 const comp  = ['<', '<='];
-
                 if (arith.includes(expr.op)) {
                     if (left !== 'Int' || right !== 'Int')
-                        this.error(`Operador '${expr.op}' exige Int, recebeu '${left}' e '${right}'`);
-                    return 'Int';
-                }
-                if (comp.includes(expr.op)) {
+                        this.error(`Operador '${expr.op}' exige Int, recebeu '${left}' e '${right}'`, expr);
+                    inferredType = 'Int';
+                } else if (comp.includes(expr.op)) {
                     if (left !== 'Int' || right !== 'Int')
-                        this.error(`Operador '${expr.op}' exige Int, recebeu '${left}' e '${right}'`);
-                    return 'Bool';
+                        this.error(`Operador '${expr.op}' exige Int, recebeu '${left}' e '${right}'`, expr);
+                    inferredType = 'Bool';
+                } else {
+                    // '=' — básicos só comparam com o mesmo tipo
+                    const basic = ['Int', 'Bool', 'String'];
+                    if (basic.includes(left) || basic.includes(right))
+                        if (left !== right)
+                            this.error(`Operador '=': '${left}' e '${right}' devem ser do mesmo tipo`, expr);
+                    inferredType = 'Bool';
                 }
-                // '=' — Int, Bool e String só podem comparar com o mesmo tipo
-                const basic = ['Int', 'Bool', 'String'];
-                if (basic.includes(left) || basic.includes(right)) {
-                    if (left !== right)
-                        this.error(`Operador '=': '${left}' e '${right}' devem ser do mesmo tipo`);
-                }
-                return 'Bool';
+                break;
             }
 
             case 'if': {
                 const pred = this.checkExpr(expr.pred);
                 if (pred !== 'Bool')
-                    this.error(`Predicado do 'if' deve ser Bool, recebeu '${pred}'`);
+                    this.error(`Predicado do 'if' deve ser Bool, recebeu '${pred}'`, expr);
                 const thenType = this.checkExpr(expr.thenExpr);
                 const elseType = this.checkExpr(expr.elseExpr);
-                return this.join(thenType, elseType);
+                inferredType   = this.join(thenType, elseType);
+                break;
             }
 
             case 'while': {
                 const pred = this.checkExpr(expr.pred);
                 if (pred !== 'Bool')
-                    this.error(`Predicado do 'while' deve ser Bool, recebeu '${pred}'`);
+                    this.error(`Predicado do 'while' deve ser Bool, recebeu '${pred}'`, expr);
                 this.checkExpr(expr.body);
-                return 'Object';
+                inferredType = 'Object';
+                break;
             }
 
             case 'block': {
                 let lastType = 'Object';
-                for (const e of expr.exprs)
-                    lastType = this.checkExpr(e);
-                return lastType;
+                for (const e of expr.exprs) lastType = this.checkExpr(e);
+                inferredType = lastType;
+                break;
             }
 
             case 'let': {
                 this.enterScope();
                 for (const b of expr.bindings) {
-                    if (!this.classTable[b.declType])
-                        this.error(`Let: tipo '${b.declType}' não existe`);
+                    if (b.name === 'self')
+                        this.error(`'let' não pode declarar variável chamada 'self'`, b);
+                    const resolvedDecl = this.resolveSelfType(b.declType);
+                    if (!this.classTable[resolvedDecl])
+                        this.error(`Let: tipo '${b.declType}' não existe`, b);
                     if (b.init) {
                         const initType = this.checkExpr(b.init);
                         if (!this.conforms(initType, b.declType))
                             this.error(
                                 `Let: '${b.name}' declarado como '${b.declType}' ` +
-                                `mas inicializado com '${initType}'`
+                                `mas inicializado com '${initType}'`,
+                                b
                             );
                     }
+                    b.coolType = b.declType;   // anota na AST
                     this.addVar(b.name, b.declType);
                 }
-                const bodyType = this.checkExpr(expr.body);
+                inferredType = this.checkExpr(expr.body);
                 this.exitScope();
-                return bodyType;
+                break;
             }
 
             case 'case': {
                 this.checkExpr(expr.expr);
-                // Tipos de cada branch para calcular o join
                 const branchTypes = expr.branches.map(b => {
-                    if (!this.classTable[b.declType])
-                        this.error(`Case: tipo '${b.declType}' não existe`);
+                    if (b.name === 'self')
+                        this.error(`'case' não pode declarar variável chamada 'self'`, b);
+                    const resolvedType = this.resolveSelfType(b.declType);
+                    if (!this.classTable[resolvedType])
+                        this.error(`Case: tipo '${b.declType}' não existe`, b);
                     this.enterScope();
                     this.addVar(b.name, b.declType);
                     const t = this.checkExpr(b.body);
+                    b.coolType = b.declType;   // anota na AST
                     this.exitScope();
                     return t;
                 });
-                // Tipo do case = join de todos os branches
-                return branchTypes.reduce((acc, t) => this.join(acc, t), branchTypes[0]);
+                inferredType = branchTypes.reduce((acc, t) => this.join(acc, t), branchTypes[0]);
+                break;
             }
 
             case 'new': {
-                if (!this.classTable[expr.typeName])
-                    this.error(`'new': classe '${expr.typeName}' não existe`);
-                return expr.typeName;
+                // new SELF_TYPE é válido — retorna SELF_TYPE para ser resolvido no contexto
+                if (expr.typeName === 'SELF_TYPE') {
+                    inferredType = 'SELF_TYPE';
+                } else {
+                    if (!this.classTable[expr.typeName])
+                        this.error(`'new': classe '${expr.typeName}' não existe`, expr);
+                    inferredType = expr.typeName;
+                }
+                break;
             }
 
             case 'neg': {
                 const t = this.checkExpr(expr.expr);
-                if (t !== 'Int')
-                    this.error(`'~' exige Int, recebeu '${t}'`);
-                return 'Int';
+                if (t !== 'Int') this.error(`'~' exige Int, recebeu '${t}'`, expr);
+                inferredType = 'Int';
+                break;
             }
 
             case 'not': {
                 const t = this.checkExpr(expr.expr);
-                if (t !== 'Bool')
-                    this.error(`'not' exige Bool, recebeu '${t}'`);
-                return 'Bool';
+                if (t !== 'Bool') this.error(`'not' exige Bool, recebeu '${t}'`, expr);
+                inferredType = 'Bool';
+                break;
             }
 
             case 'isvoid':
                 this.checkExpr(expr.expr);
-                return 'Bool';
+                inferredType = 'Bool';
+                break;
 
             case 'dispatch': {
-                const objType = this.checkExpr(expr.object);
-                const cls     = this.classTable[objType];
+                const objType     = this.checkExpr(expr.object);
+                const resolvedObj = this.resolveSelfType(objType);
+                const cls         = this.classTable[resolvedObj];
                 if (!cls) {
-                    this.error(`Dispatch: tipo '${objType}' não existe`);
-                    return 'Object';
+                    this.error(`Dispatch: tipo '${objType}' não existe`, expr);
+                    inferredType = 'Object';
+                    break;
                 }
-                const method = this.lookupMethod(objType, expr.method);
+                const method = this.lookupMethod(resolvedObj, expr.method);
                 if (!method) {
-                    this.error(`Dispatch: método '${expr.method}' não existe em '${objType}'`);
-                    return 'Object';
+                    this.error(`Dispatch: método '${expr.method}' não existe em '${resolvedObj}'`, expr);
+                    inferredType = 'Object';
+                    break;
                 }
-                this.checkDispatchArgs(method, expr.args, expr.method);
-                return method.returnType === 'SELF_TYPE' ? objType : method.returnType;
+                this.checkDispatchArgs(method, expr.args, expr.method, expr);
+                // Se retorna SELF_TYPE, preserva o tipo do objeto receptor
+                inferredType = method.returnType === 'SELF_TYPE' ? objType : method.returnType;
+                break;
             }
 
             case 'static_dispatch': {
                 const objType = this.checkExpr(expr.object);
                 if (!this.conforms(objType, expr.castType))
                     this.error(
-                        `Static dispatch: '${objType}' não é compatível com '${expr.castType}'`
+                        `Static dispatch: '${objType}' não é compatível com '${expr.castType}'`,
+                        expr
                     );
                 const method = this.lookupMethod(expr.castType, expr.method);
                 if (!method) {
-                    this.error(`Static dispatch: método '${expr.method}' não existe em '${expr.castType}'`);
-                    return 'Object';
+                    this.error(`Static dispatch: método '${expr.method}' não existe em '${expr.castType}'`, expr);
+                    inferredType = 'Object';
+                    break;
                 }
-                this.checkDispatchArgs(method, expr.args, expr.method);
-                return method.returnType === 'SELF_TYPE' ? expr.castType : method.returnType;
+                this.checkDispatchArgs(method, expr.args, expr.method, expr);
+                inferredType = method.returnType === 'SELF_TYPE' ? expr.castType : method.returnType;
+                break;
             }
 
             case 'self_dispatch': {
                 const method = this.lookupMethod(this.currentClass, expr.method);
                 if (!method) {
-                    this.error(`Dispatch: método '${expr.method}' não existe em '${this.currentClass}'`);
-                    return 'Object';
+                    this.error(`Dispatch: método '${expr.method}' não existe em '${this.currentClass}'`, expr);
+                    inferredType = 'Object';
+                    break;
                 }
-                this.checkDispatchArgs(method, expr.args, expr.method);
-                return method.returnType === 'SELF_TYPE' ? this.currentClass : method.returnType;
+                this.checkDispatchArgs(method, expr.args, expr.method, expr);
+                // Preserva SELF_TYPE — o chamador é self
+                inferredType = method.returnType === 'SELF_TYPE' ? 'SELF_TYPE' : method.returnType;
+                break;
             }
 
             default:
-                this.error(`Expressão desconhecida: '${expr.type}'`);
-                return 'Object';
+                this.error(`Expressão desconhecida: '${expr.type}'`, expr);
+                inferredType = 'Object';
         }
+
+        expr.coolType = inferredType;   // anota o tipo inferido no nó da AST
+        return inferredType;
     }
 
-    // Busca um método na classe e nos seus ancestrais
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
     lookupMethod(className, methodName) {
         let current = className;
         while (current) {
@@ -388,12 +514,12 @@ class SemanticAnalyzer {
         return null;
     }
 
-    // Verifica quantidade e tipos dos argumentos de um dispatch
-    checkDispatchArgs(method, args, methodName) {
+    checkDispatchArgs(method, args, methodName, node) {
         if (args.length !== method.formals.length) {
             this.error(
                 `Método '${methodName}' espera ${method.formals.length} ` +
-                `argumento(s), recebeu ${args.length}`
+                `argumento(s), recebeu ${args.length}`,
+                node
             );
             return;
         }
@@ -403,7 +529,8 @@ class SemanticAnalyzer {
             if (!this.conforms(argType, formalType))
                 this.error(
                     `Método '${methodName}': argumento ${i + 1} tem tipo '${argType}' ` +
-                    `mas espera '${formalType}'`
+                    `mas espera '${formalType}'`,
+                    node
                 );
         }
     }
