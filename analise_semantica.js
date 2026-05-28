@@ -201,20 +201,80 @@ class SemanticAnalyzer {
         }
     }
 
+    // ─── Verificações de features ─────────────────────────────────────────────
+
+    checkDuplicateFeatures(cls) {
+        const attrNames   = new Set();
+        const methodNames = new Set();
+        for (const f of cls.features) {
+            if (f.type === 'attribute') {
+                if (attrNames.has(f.name))
+                    this.error(`Atributo '${f.name}' definido mais de uma vez em '${cls.name}'`, f);
+                else
+                    attrNames.add(f.name);
+            } else {
+                if (methodNames.has(f.name))
+                    this.error(`Método '${f.name}' definido mais de uma vez em '${cls.name}'`, f);
+                else
+                    methodNames.add(f.name);
+            }
+        }
+    }
+
+    checkAttributeOverride(cls) {
+        for (const f of cls.features) {
+            if (f.type !== 'attribute') continue;
+            let ancestor = this.classTable[cls.parent];
+            while (ancestor) {
+                const conflict = ancestor.features?.find(
+                    af => af.type === 'attribute' && af.name === f.name
+                );
+                if (conflict) {
+                    this.error(
+                        `Atributo '${f.name}' em '${cls.name}' redefine atributo herdado de '${ancestor.name}'`,
+                        f
+                    );
+                    break;
+                }
+                ancestor = this.classTable[ancestor.parent];
+            }
+        }
+    }
+
     // ─── Passagem 2: verificação de escopo e tipos ────────────────────────────
+
+    // Coleta todos os atributos herdados de ancestrais (não inclui os da própria classe)
+    inheritedAttributes(cls) {
+        const attrs = [];
+        let current = this.classTable[cls.parent];
+        while (current) {
+            for (const f of (current.features ?? [])) {
+                if (f.type === 'attribute') attrs.unshift({ name: f.name, declType: f.declType });
+            }
+            current = this.classTable[current.parent];
+        }
+        return attrs;
+    }
 
     checkClasses() {
         for (const cls of this.ast) {
             this.currentClass = cls.name;
 
             this.checkOverride(cls);
+            this.checkDuplicateFeatures(cls);
+            this.checkAttributeOverride(cls);
 
             this.enterScope();
 
             // self tem tipo SELF_TYPE — resolvido para o nome da classe no momento do uso
             this.addVar('self', 'SELF_TYPE');
 
-            // Atributos visíveis em toda a classe
+            // Atributos herdados também são visíveis dentro da classe
+            for (const inherited of this.inheritedAttributes(cls)) {
+                this.addVar(inherited.name, inherited.declType);
+            }
+
+            // Atributos diretos da classe
             for (const f of cls.features) {
                 if (f.type === 'attribute') {
                     if (f.name === 'self')
@@ -245,10 +305,17 @@ class SemanticAnalyzer {
 
             this.enterScope();
 
+            const seenFormals = new Set();
             for (const formal of feature.formals) {
                 if (formal.name === 'self')
                     this.error(`Parâmetro não pode se chamar 'self'`, formal);
-                if (!this.classTable[formal.declType])
+                if (seenFormals.has(formal.name))
+                    this.error(`Parâmetro '${formal.name}' duplicado em '${feature.name}'`, formal);
+                else
+                    seenFormals.add(formal.name);
+                if (formal.declType === 'SELF_TYPE')
+                    this.error(`Parâmetro '${formal.name}': SELF_TYPE não é permitido como tipo de parâmetro formal`, formal);
+                else if (!this.classTable[formal.declType])
                     this.error(`Parâmetro '${formal.name}': tipo '${formal.declType}' não existe`, formal);
                 this.addVar(formal.name, formal.declType);
             }
@@ -392,12 +459,17 @@ class SemanticAnalyzer {
 
             case 'case': {
                 this.checkExpr(expr.expr);
+                const seenBranchTypes = new Set();
                 const branchTypes = expr.branches.map(b => {
                     if (b.name === 'self')
                         this.error(`'case' não pode declarar variável chamada 'self'`, b);
                     const resolvedType = this.resolveSelfType(b.declType);
                     if (!this.classTable[resolvedType])
                         this.error(`Case: tipo '${b.declType}' não existe`, b);
+                    if (seenBranchTypes.has(b.declType))
+                        this.error(`Case: tipo '${b.declType}' aparece em mais de um ramo`, b);
+                    else
+                        seenBranchTypes.add(b.declType);
                     this.enterScope();
                     this.addVar(b.name, b.declType);
                     const t = this.checkExpr(b.body);
@@ -475,7 +547,8 @@ class SemanticAnalyzer {
                     break;
                 }
                 this.checkDispatchArgs(method, expr.args, expr.method, expr);
-                inferredType = method.returnType === 'SELF_TYPE' ? expr.castType : method.returnType;
+                // SELF_TYPE retorna o tipo do receptor (e0), não o tipo do cast
+                inferredType = method.returnType === 'SELF_TYPE' ? objType : method.returnType;
                 break;
             }
 
