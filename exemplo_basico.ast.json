@@ -1,0 +1,77 @@
+[
+  {
+    "type": "class",
+    "name": "Main",
+    "parent": "Object",
+    "features": [
+      {
+        "type": "method",
+        "name": "main",
+        "formals": [],
+        "returnType": "Int",
+        "body": {
+          "type": "let",
+          "bindings": [
+            {
+              "name": "x",
+              "declType": "Int",
+              "init": {
+                "type": "int",
+                "value": 1,
+                "line": 3,
+                "col": 23,
+                "coolType": "Int"
+              },
+              "line": 3,
+              "col": 12,
+              "coolType": "Int"
+            },
+            {
+              "name": "y",
+              "declType": "Int",
+              "init": {
+                "type": "int",
+                "value": 2,
+                "line": 3,
+                "col": 37,
+                "coolType": "Int"
+              },
+              "line": 3,
+              "col": 26,
+              "coolType": "Int"
+            }
+          ],
+          "body": {
+            "type": "binop",
+            "op": "+",
+            "left": {
+              "type": "object",
+              "name": "x",
+              "line": 3,
+              "col": 42,
+              "coolType": "Int"
+            },
+            "right": {
+              "type": "object",
+              "name": "y",
+              "line": 3,
+              "col": 46,
+              "coolType": "Int"
+            },
+            "line": 3,
+            "col": 44,
+            "coolType": "Int"
+          },
+          "line": 3,
+          "col": 8,
+          "coolType": "Int"
+        },
+        "line": 2,
+        "col": 4,
+        "coolType": "Int"
+      }
+    ],
+    "line": 1,
+    "col": 0
+  }
+]
