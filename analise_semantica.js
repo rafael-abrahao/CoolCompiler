@@ -16,11 +16,15 @@ class SemanticAnalyzer {
 
     // ─── Erros com localização ────────────────────────────────────────────────
 
+    // Formato: "linha 10, col 5: mensagem de erro"
+    // A localização fica no início — padrão de compiladores como gcc e clang.
+    // node é qualquer nó da AST que tenha os campos line e col adicionados
+    // pela gramática. Se não tiver, omite a localização.
     error(msg, node = null) {
-        const loc = (node?.line != null)
-            ? ` [linha ${node.line}, coluna ${node.col ?? '?'}]`
+        const prefix = (node?.line != null)
+            ? `linha ${node.line}, col ${node.col ?? '?'}: `
             : '';
-        this.errors.push(`${msg}${loc}`);
+        this.errors.push(`${prefix}${msg}`);
     }
 
     // ─── SELF_TYPE ────────────────────────────────────────────────────────────
