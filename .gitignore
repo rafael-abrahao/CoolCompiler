@@ -50,4 +50,4 @@ web_modules/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-ast.json
+*.ast.json
