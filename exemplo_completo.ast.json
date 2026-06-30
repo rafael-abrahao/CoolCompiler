@@ -1,0 +1,694 @@
+[
+  {
+    "type": "class",
+    "name": "Main",
+    "parent": "IO",
+    "features": [
+      {
+        "type": "attribute",
+        "name": "counter",
+        "declType": "Int",
+        "init": {
+          "type": "int",
+          "value": 0,
+          "line": 12,
+          "col": 17,
+          "coolType": "Int"
+        },
+        "line": 12,
+        "col": 0,
+        "coolType": "Int"
+      },
+      {
+        "type": "attribute",
+        "name": "message",
+        "declType": "String",
+        "init": {
+          "type": "string",
+          "value": "Hello\nWorld\tCOOL",
+          "line": 14,
+          "col": 39,
+          "coolType": "String"
+        },
+        "line": 14,
+        "col": 0,
+        "coolType": "String"
+      },
+      {
+        "type": "attribute",
+        "name": "flag",
+        "declType": "Bool",
+        "init": {
+          "type": "bool",
+          "value": true,
+          "line": 16,
+          "col": 15,
+          "coolType": "Bool"
+        },
+        "line": 16,
+        "col": 0,
+        "coolType": "Bool"
+      },
+      {
+        "type": "method",
+        "name": "main",
+        "formals": [],
+        "returnType": "Object",
+        "body": {
+          "type": "block",
+          "exprs": [
+            {
+              "type": "self_dispatch",
+              "method": "out_string",
+              "args": [
+                {
+                  "type": "string",
+                  "value": "Starting program...\n",
+                  "line": 21,
+                  "col": 41,
+                  "coolType": "String"
+                }
+              ],
+              "line": 21,
+              "col": 8,
+              "coolType": "SELF_TYPE"
+            },
+            {
+              "type": "let",
+              "bindings": [
+                {
+                  "name": "x",
+                  "declType": "Int",
+                  "init": {
+                    "type": "int",
+                    "value": 5,
+                    "line": 25,
+                    "col": 23,
+                    "coolType": "Int"
+                  },
+                  "line": 25,
+                  "col": 12,
+                  "coolType": "Int"
+                },
+                {
+                  "name": "y",
+                  "declType": "Int",
+                  "init": {
+                    "type": "int",
+                    "value": 10,
+                    "line": 26,
+                    "col": 23,
+                    "coolType": "Int"
+                  },
+                  "line": 26,
+                  "col": 12,
+                  "coolType": "Int"
+                },
+                {
+                  "name": "text",
+                  "declType": "String",
+                  "init": {
+                    "type": "string",
+                    "value": "Value:\t",
+                    "line": 27,
+                    "col": 38,
+                    "coolType": "String"
+                  },
+                  "line": 27,
+                  "col": 12,
+                  "coolType": "String"
+                }
+              ],
+              "body": {
+                "type": "block",
+                "exprs": [
+                  {
+                    "type": "self_dispatch",
+                    "method": "out_string",
+                    "args": [
+                      {
+                        "type": "object",
+                        "name": "text",
+                        "line": 30,
+                        "col": 23,
+                        "coolType": "String"
+                      }
+                    ],
+                    "line": 30,
+                    "col": 12,
+                    "coolType": "SELF_TYPE"
+                  },
+                  {
+                    "type": "self_dispatch",
+                    "method": "out_int",
+                    "args": [
+                      {
+                        "type": "binop",
+                        "op": "+",
+                        "left": {
+                          "type": "object",
+                          "name": "x",
+                          "line": 31,
+                          "col": 20,
+                          "coolType": "Int"
+                        },
+                        "right": {
+                          "type": "object",
+                          "name": "y",
+                          "line": 31,
+                          "col": 24,
+                          "coolType": "Int"
+                        },
+                        "line": 31,
+                        "col": 22,
+                        "coolType": "Int"
+                      }
+                    ],
+                    "line": 31,
+                    "col": 12,
+                    "coolType": "SELF_TYPE"
+                  },
+                  {
+                    "type": "if",
+                    "pred": {
+                      "type": "binop",
+                      "op": "<",
+                      "left": {
+                        "type": "object",
+                        "name": "x",
+                        "line": 33,
+                        "col": 15,
+                        "coolType": "Int"
+                      },
+                      "right": {
+                        "type": "object",
+                        "name": "y",
+                        "line": 33,
+                        "col": 19,
+                        "coolType": "Int"
+                      },
+                      "line": 33,
+                      "col": 17,
+                      "coolType": "Bool"
+                    },
+                    "thenExpr": {
+                      "type": "self_dispatch",
+                      "method": "out_string",
+                      "args": [
+                        {
+                          "type": "string",
+                          "value": "\nx is smaller\n",
+                          "line": 34,
+                          "col": 44,
+                          "coolType": "String"
+                        }
+                      ],
+                      "line": 34,
+                      "col": 16,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "elseExpr": {
+                      "type": "self_dispatch",
+                      "method": "out_string",
+                      "args": [
+                        {
+                          "type": "string",
+                          "value": "\ny is smaller\n",
+                          "line": 36,
+                          "col": 44,
+                          "coolType": "String"
+                        }
+                      ],
+                      "line": 36,
+                      "col": 16,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "line": 33,
+                    "col": 12,
+                    "coolType": "Main"
+                  },
+                  {
+                    "type": "while",
+                    "pred": {
+                      "type": "binop",
+                      "op": "<",
+                      "left": {
+                        "type": "object",
+                        "name": "x",
+                        "line": 41,
+                        "col": 18,
+                        "coolType": "Int"
+                      },
+                      "right": {
+                        "type": "int",
+                        "value": 20,
+                        "line": 41,
+                        "col": 22,
+                        "coolType": "Int"
+                      },
+                      "line": 41,
+                      "col": 20,
+                      "coolType": "Bool"
+                    },
+                    "body": {
+                      "type": "block",
+                      "exprs": [
+                        {
+                          "type": "assign",
+                          "name": "x",
+                          "expr": {
+                            "type": "binop",
+                            "op": "+",
+                            "left": {
+                              "type": "object",
+                              "name": "x",
+                              "line": 43,
+                              "col": 21,
+                              "coolType": "Int"
+                            },
+                            "right": {
+                              "type": "int",
+                              "value": 1,
+                              "line": 43,
+                              "col": 25,
+                              "coolType": "Int"
+                            },
+                            "line": 43,
+                            "col": 23,
+                            "coolType": "Int"
+                          },
+                          "line": 43,
+                          "col": 16,
+                          "coolType": "Int"
+                        },
+                        {
+                          "type": "self_dispatch",
+                          "method": "out_int",
+                          "args": [
+                            {
+                              "type": "object",
+                              "name": "x",
+                              "line": 44,
+                              "col": 24,
+                              "coolType": "Int"
+                            }
+                          ],
+                          "line": 44,
+                          "col": 16,
+                          "coolType": "SELF_TYPE"
+                        }
+                      ],
+                      "line": 42,
+                      "col": 12,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "line": 41,
+                    "col": 12,
+                    "coolType": "Object"
+                  },
+                  {
+                    "type": "case",
+                    "expr": {
+                      "type": "object",
+                      "name": "x",
+                      "line": 50,
+                      "col": 17,
+                      "coolType": "Int"
+                    },
+                    "branches": [
+                      {
+                        "name": "a",
+                        "declType": "Int",
+                        "body": {
+                          "type": "self_dispatch",
+                          "method": "out_string",
+                          "args": [
+                            {
+                              "type": "string",
+                              "value": "Integer\n",
+                              "line": 51,
+                              "col": 48,
+                              "coolType": "String"
+                            }
+                          ],
+                          "line": 51,
+                          "col": 27,
+                          "coolType": "SELF_TYPE"
+                        },
+                        "line": 51,
+                        "col": 16,
+                        "coolType": "Int"
+                      },
+                      {
+                        "name": "b",
+                        "declType": "Bool",
+                        "body": {
+                          "type": "self_dispatch",
+                          "method": "out_string",
+                          "args": [
+                            {
+                              "type": "string",
+                              "value": "Boolean\n",
+                              "line": 52,
+                              "col": 49,
+                              "coolType": "String"
+                            }
+                          ],
+                          "line": 52,
+                          "col": 28,
+                          "coolType": "SELF_TYPE"
+                        },
+                        "line": 52,
+                        "col": 16,
+                        "coolType": "Bool"
+                      },
+                      {
+                        "name": "c",
+                        "declType": "String",
+                        "body": {
+                          "type": "self_dispatch",
+                          "method": "out_string",
+                          "args": [
+                            {
+                              "type": "string",
+                              "value": "String\n",
+                              "line": 53,
+                              "col": 50,
+                              "coolType": "String"
+                            }
+                          ],
+                          "line": 53,
+                          "col": 30,
+                          "coolType": "SELF_TYPE"
+                        },
+                        "line": 53,
+                        "col": 16,
+                        "coolType": "String"
+                      }
+                    ],
+                    "line": 50,
+                    "col": 12,
+                    "coolType": "Main"
+                  },
+                  {
+                    "type": "assign",
+                    "name": "counter",
+                    "expr": {
+                      "type": "new",
+                      "typeName": "Int",
+                      "line": 58,
+                      "col": 24,
+                      "coolType": "Int"
+                    },
+                    "line": 58,
+                    "col": 12,
+                    "coolType": "Int"
+                  },
+                  {
+                    "type": "if",
+                    "pred": {
+                      "type": "isvoid",
+                      "expr": {
+                        "type": "object",
+                        "name": "counter",
+                        "line": 62,
+                        "col": 22,
+                        "coolType": "Int"
+                      },
+                      "line": 62,
+                      "col": 15,
+                      "coolType": "Bool"
+                    },
+                    "thenExpr": {
+                      "type": "self_dispatch",
+                      "method": "out_string",
+                      "args": [
+                        {
+                          "type": "string",
+                          "value": "Counter is void\n",
+                          "line": 63,
+                          "col": 45,
+                          "coolType": "String"
+                        }
+                      ],
+                      "line": 63,
+                      "col": 16,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "elseExpr": {
+                      "type": "self_dispatch",
+                      "method": "out_string",
+                      "args": [
+                        {
+                          "type": "string",
+                          "value": "Counter exists\n",
+                          "line": 65,
+                          "col": 44,
+                          "coolType": "String"
+                        }
+                      ],
+                      "line": 65,
+                      "col": 16,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "line": 62,
+                    "col": 12,
+                    "coolType": "Main"
+                  },
+                  {
+                    "type": "dispatch",
+                    "object": {
+                      "type": "object",
+                      "name": "self",
+                      "line": 70,
+                      "col": 12,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "method": "out_string",
+                    "args": [
+                      {
+                        "type": "string",
+                        "value": "Dynamic dispatch\n",
+                        "line": 70,
+                        "col": 47,
+                        "coolType": "String"
+                      }
+                    ],
+                    "line": 70,
+                    "col": 16,
+                    "coolType": "SELF_TYPE"
+                  },
+                  {
+                    "type": "static_dispatch",
+                    "object": {
+                      "type": "object",
+                      "name": "self",
+                      "line": 74,
+                      "col": 12,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "castType": "IO",
+                    "method": "out_string",
+                    "args": [
+                      {
+                        "type": "string",
+                        "value": "Static dispatch\n",
+                        "line": 74,
+                        "col": 49,
+                        "coolType": "String"
+                      }
+                    ],
+                    "line": 74,
+                    "col": 16,
+                    "coolType": "IO"
+                  },
+                  {
+                    "type": "if",
+                    "pred": {
+                      "type": "not",
+                      "expr": {
+                        "type": "object",
+                        "name": "flag",
+                        "line": 78,
+                        "col": 19,
+                        "coolType": "Bool"
+                      },
+                      "line": 78,
+                      "col": 15,
+                      "coolType": "Bool"
+                    },
+                    "thenExpr": {
+                      "type": "self_dispatch",
+                      "method": "out_string",
+                      "args": [
+                        {
+                          "type": "string",
+                          "value": "Flag false\n",
+                          "line": 79,
+                          "col": 40,
+                          "coolType": "String"
+                        }
+                      ],
+                      "line": 79,
+                      "col": 16,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "elseExpr": {
+                      "type": "self_dispatch",
+                      "method": "out_string",
+                      "args": [
+                        {
+                          "type": "string",
+                          "value": "Flag true\n",
+                          "line": 81,
+                          "col": 39,
+                          "coolType": "String"
+                        }
+                      ],
+                      "line": 81,
+                      "col": 16,
+                      "coolType": "SELF_TYPE"
+                    },
+                    "line": 78,
+                    "col": 12,
+                    "coolType": "Main"
+                  },
+                  {
+                    "type": "assign",
+                    "name": "counter",
+                    "expr": {
+                      "type": "neg",
+                      "expr": {
+                        "type": "object",
+                        "name": "x",
+                        "line": 86,
+                        "col": 24,
+                        "coolType": "Int"
+                      },
+                      "line": 86,
+                      "col": 23,
+                      "coolType": "Int"
+                    },
+                    "line": 86,
+                    "col": 12,
+                    "coolType": "Int"
+                  },
+                  {
+                    "type": "block",
+                    "exprs": [
+                      {
+                        "type": "self_dispatch",
+                        "method": "out_string",
+                        "args": [
+                          {
+                            "type": "string",
+                            "value": "Nested block\n",
+                            "line": 91,
+                            "col": 42,
+                            "coolType": "String"
+                          }
+                        ],
+                        "line": 91,
+                        "col": 16,
+                        "coolType": "SELF_TYPE"
+                      },
+                      {
+                        "type": "self_dispatch",
+                        "method": "out_int",
+                        "args": [
+                          {
+                            "type": "object",
+                            "name": "counter",
+                            "line": 92,
+                            "col": 24,
+                            "coolType": "Int"
+                          }
+                        ],
+                        "line": 92,
+                        "col": 16,
+                        "coolType": "SELF_TYPE"
+                      }
+                    ],
+                    "line": 90,
+                    "col": 12,
+                    "coolType": "SELF_TYPE"
+                  }
+                ],
+                "line": 28,
+                "col": 11,
+                "coolType": "SELF_TYPE"
+              },
+              "line": 25,
+              "col": 8,
+              "coolType": "SELF_TYPE"
+            },
+            {
+              "type": "self_dispatch",
+              "method": "out_string",
+              "args": [
+                {
+                  "type": "string",
+                  "value": "Program finished.\n",
+                  "line": 97,
+                  "col": 39,
+                  "coolType": "String"
+                }
+              ],
+              "line": 97,
+              "col": 8,
+              "coolType": "SELF_TYPE"
+            }
+          ],
+          "line": 20,
+          "col": 4,
+          "coolType": "SELF_TYPE"
+        },
+        "line": 18,
+        "col": 0,
+        "coolType": "Object"
+      }
+    ],
+    "line": 8,
+    "col": 0
+  },
+  {
+    "type": "class",
+    "name": "Helper",
+    "parent": "Object",
+    "features": [
+      {
+        "type": "attribute",
+        "name": "value",
+        "declType": "Int",
+        "init": {
+          "type": "int",
+          "value": 42,
+          "line": 108,
+          "col": 15,
+          "coolType": "Int"
+        },
+        "line": 108,
+        "col": 0,
+        "coolType": "Int"
+      },
+      {
+        "type": "method",
+        "name": "getValue",
+        "formals": [],
+        "returnType": "Int",
+        "body": {
+          "type": "object",
+          "name": "value",
+          "line": 111,
+          "col": 4,
+          "coolType": "Int"
+        },
+        "line": 110,
+        "col": 0,
+        "coolType": "Int"
+      }
+    ],
+    "line": 106,
+    "col": 0
+  }
+]
