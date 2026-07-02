@@ -21,6 +21,7 @@ const grammar = String.raw`
         isvoid: "ISVOID",
         let: "LET",
         loop: "LOOP",
+        
         pool: "POOL",
         then: "THEN",
         while: "WHILE",
