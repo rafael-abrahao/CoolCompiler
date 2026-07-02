@@ -1,15 +1,248 @@
 {
   "functions": [
     {
+      "name": "Object.abort",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "Object.type_name",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "r",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "r"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "Object.copy",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "IO.out_string",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "x",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IO.out_int",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "x",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "print",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IO.in_string",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "r",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "r"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "IO.in_int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "r",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "r"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "String.length",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "r",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "r"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "String.concat",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "s",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "String.substr",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "i",
+          "type": "int"
+        },
+        {
+          "name": "l",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
       "name": "main",
       "args": [],
       "instrs": [
+        {
+          "op": "const",
+          "dest": "self",
+          "type": "int",
+          "value": 1
+        },
         {
           "op": "call",
           "dest": "r0",
           "type": "int",
           "funcs": [
-            "Main.in_int"
+            "IO.in_int"
           ],
           "args": [
             "self"
@@ -28,7 +261,7 @@
           "dest": "r1",
           "type": "int",
           "funcs": [
-            "Main.in_int"
+            "IO.in_int"
           ],
           "args": [
             "self"
@@ -70,7 +303,7 @@
           "dest": "r4",
           "type": "int",
           "funcs": [
-            "Main.out_string"
+            "IO.out_string"
           ],
           "args": [
             "self",
@@ -82,7 +315,7 @@
           "dest": "r5",
           "type": "int",
           "funcs": [
-            "Main.out_int"
+            "IO.out_int"
           ],
           "args": [
             "self",
@@ -100,7 +333,7 @@
           "dest": "r7",
           "type": "int",
           "funcs": [
-            "Main.out_string"
+            "IO.out_string"
           ],
           "args": [
             "self",

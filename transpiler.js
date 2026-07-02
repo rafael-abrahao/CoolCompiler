@@ -18,9 +18,21 @@
  * Limitações conhecidas
  * ─────────────────────
  *   • `new T` emite const 1 (non-void placeholder) — Bril core não tem heap.
- *   • `case` gera um br real sobre a variável _typeTag injetada no self;
- *     na ausência de informação de runtime, escolhe o primeiro branch.
- *   • Strings são representadas como int 0 (índice em tabela futura).
+ *   • `case` compara o valor runtime da expressão com o índice do branch;
+ *     sem tags de tipo reais, na prática cai quase sempre no branch default.
+ *   • Strings são representadas como int 0 (índice em tabela futura) —
+ *     `out_string` portanto não imprime texto algum (é efetivamente um no-op
+ *     que retorna self); `String.length/concat/substr` retornam placeholders.
+ *   • Atributos não têm um heap real por trás: cada método é transpilado como
+ *     uma função "flat" que reseeda todos os atributos (próprios + herdados)
+ *     a partir de seus inicializadores estáticos no início do corpo. Ou seja,
+ *     não há estado persistente entre chamadas de método em um mesmo objeto.
+ *     Um inicializador de atributo que dispare uma chamada de método (dispatch)
+ *     pode causar recursão infinita, pois o método chamado reseeda os atributos
+ *     de novo — nenhum dos exemplos do repositório faz isso.
+ *   • `IO.in_int`/`IO.in_string` sempre retornam 0 — o interpretador de
+ *     referência (brili) não tem uma instrução de leitura interativa de stdin,
+ *     só recebe argumentos via linha de comando para `main`.
  */
 
 class BrilTranspiler {
@@ -73,10 +85,102 @@ class BrilTranspiler {
     // ─── Entrada principal ────────────────────────────────────────────────────
 
     transpile() {
+        this.emitBuiltins();
         for (const cls of this.ast) {
             this.transpileClass(cls);
         }
         return { functions: this.functions };
+    }
+
+    // ─── Funções built-in ──────────────────────────────────────────────────────
+
+    // As classes básicas (Object, IO, String) só existem na classTable do
+    // analisador semântico — nunca aparecem no AST, então transpileClass()
+    // nunca as visita. Sem isso, qualquer dispatch para out_string/out_int/
+    // abort/etc. gera uma chamada Bril para uma função que não existe
+    // ("no function of name ... found" em tempo de execução).
+    emitBuiltins() {
+        // Métodos que retornam Object em COOL viram funções Bril sem "type"
+        // e com "ret" sem argumento — mesma convenção usada para métodos de
+        // usuário (ver transpileMethod). Os demais têm "type": "int".
+        const define = (name, retType, instrs) => {
+            const func = { name, args: [{ name: 'self', type: 'int' }], instrs };
+            if (retType) func.type = retType;
+            this.functions.push(func);
+        };
+
+        // abort() retorna Object em COOL — vira função Bril sem "type" e sem
+        // valor de retorno, mesma convenção de métodos de usuário que
+        // retornam Object (ver transpileMethod / _emitCall).
+        define('Object.abort', null, [
+            { op: 'ret', args: [] },
+        ]);
+        define('Object.type_name', 'int', [
+            // Sem tags de tipo em runtime não há como saber o nome real da classe.
+            { op: 'const', dest: 'r', type: 'int', value: 0 },
+            { op: 'ret', args: ['r'] },
+        ]);
+        define('Object.copy', 'int', [
+            { op: 'ret', args: ['self'] },
+        ]);
+
+        const outArg = { name: 'x', type: 'int' };
+        this.functions.push({
+            name: 'IO.out_string', type: 'int',
+            args: [{ name: 'self', type: 'int' }, outArg],
+            // String é um placeholder int — não há conteúdo para imprimir.
+            instrs: [{ op: 'ret', args: ['self'] }],
+        });
+        this.functions.push({
+            name: 'IO.out_int', type: 'int',
+            args: [{ name: 'self', type: 'int' }, { name: 'x', type: 'int' }],
+            instrs: [
+                { op: 'print', args: ['x'] },
+                { op: 'ret', args: ['self'] },
+            ],
+        });
+        define('IO.in_string', 'int', [
+            { op: 'const', dest: 'r', type: 'int', value: 0 },
+            { op: 'ret', args: ['r'] },
+        ]);
+        define('IO.in_int', 'int', [
+            { op: 'const', dest: 'r', type: 'int', value: 0 },
+            { op: 'ret', args: ['r'] },
+        ]);
+
+        define('String.length', 'int', [
+            { op: 'const', dest: 'r', type: 'int', value: 0 },
+            { op: 'ret', args: ['r'] },
+        ]);
+        this.functions.push({
+            name: 'String.concat', type: 'int',
+            args: [{ name: 'self', type: 'int' }, { name: 's', type: 'int' }],
+            instrs: [{ op: 'ret', args: ['self'] }],
+        });
+        this.functions.push({
+            name: 'String.substr', type: 'int',
+            args: [{ name: 'self', type: 'int' }, { name: 'i', type: 'int' }, { name: 'l', type: 'int' }],
+            instrs: [{ op: 'ret', args: ['self'] }],
+        });
+    }
+
+    // Coleta os atributos visíveis em uma classe (herdados + próprios), na
+    // ordem raiz → folha, seguindo a mesma ordem de inicialização do COOL.
+    collectAttributes(className) {
+        const chain = [];
+        let current = className;
+        while (current) {
+            chain.unshift(current);
+            current = this.classTable[current]?.parent;
+        }
+        const attrs = [];
+        for (const name of chain) {
+            const cls = this.classTable[name];
+            for (const f of cls.features || []) {
+                if (f.type === 'attribute') attrs.push(f);
+            }
+        }
+        return attrs;
     }
 
     // ─── Classe ───────────────────────────────────────────────────────────────
@@ -119,11 +223,40 @@ class BrilTranspiler {
                 }))
               ];
 
+        // main não recebe "self" como parâmetro Bril (não tem receiver em
+        // COOL), mas seu corpo pode conter dispatches implícitos a self
+        // (self_dispatch, atributos etc.) que referenciam a variável 'self'.
+        // Sem isso, 'self' fica indefinida e brili aborta em runtime.
+        if (isMain) {
+            this.emit({ op: 'const', dest: 'self', type: 'int', value: 1 });
+        }
+
+        // Atributos (próprios + herdados) precisam existir como variáveis
+        // Bril antes do corpo do método rodar — sem isso, qualquer leitura
+        // direta de um atributo (fora de um let) referencia uma variável
+        // nunca definida. Como não há heap real, eles são "reseedados" a
+        // partir de seus inicializadores estáticos a cada chamada de método
+        // (ver limitação no cabeçalho do arquivo).
+        for (const attr of this.collectAttributes(cls.name)) {
+            const type = this.brilType(attr.declType);
+            if (attr.init) {
+                const val = this.transpileExpr(attr.init);
+                this.emit({ op: 'id', dest: attr.name, type, args: [val] });
+            } else {
+                this.emit({ op: 'const', dest: attr.name, type, value: this.defaultValue(attr.declType) });
+            }
+        }
+
         // Transpila o corpo e obtém a variável com o resultado
         const resultVar = this.transpileExpr(method.body);
 
-        // Emite ret com o resultado (main não retorna valor em Bril)
-        if (isMain) {
+        // Métodos que retornam Object em COOL viram funções Bril sem valor
+        // de retorno (ver bloco "func.type" abaixo) — o ret não pode levar
+        // argumento nesse caso, senão brili aborta com
+        // "unexpected value returned without destination".
+        const isVoidReturn = !isMain && (!method.returnType || method.returnType === 'Object');
+
+        if (isMain || isVoidReturn) {
             this.emit({ op: 'ret', args: [] });
         } else {
             this.emit({ op: 'ret', args: resultVar ? [resultVar] : [] });
@@ -133,7 +266,7 @@ class BrilTranspiler {
         const func = { name: funcName, args, instrs: this.instrs };
 
         // main não deve ter campo "type" (especificação Bril §Program)
-        if (!isMain && method.returnType && method.returnType !== 'Object') {
+        if (!isMain && !isVoidReturn) {
             func.type = this.brilType(method.returnType);
         }
 
@@ -381,6 +514,24 @@ class BrilTranspiler {
 
     // ── Dispatch ─────────────────────────────────────────────────────────────
 
+    // Um método pode ser herdado — a função Bril correspondente foi gerada
+    // na classe que o *declara*, não necessariamente na classe estática do
+    // receptor. Sem isso, e.g. Main.in_int() (herdado de IO) gera uma
+    // chamada para "Main.in_int", que nunca é criada por transpileClass()
+    // (só transpila os métodos definidos na própria classe) nem por
+    // emitBuiltins() (que só registra "IO.in_int"), e a chamada falha em
+    // runtime com "no function of name ... found".
+    findDeclaringClass(className, methodName) {
+        let current = className;
+        while (current) {
+            const cls = this.classTable[current];
+            const has = cls?.features?.some(f => f.type === 'method' && f.name === methodName);
+            if (has) return current;
+            current = cls?.parent;
+        }
+        return className;
+    }
+
     // Helper que monta uma instrução call Bril a partir dos componentes
     _emitCall(funcName, selfVar, argVars, coolReturnType) {
         const dest       = this.freshTemp('r');
@@ -409,23 +560,26 @@ class BrilTranspiler {
         const objVar  = this.transpileExpr(expr.object);
         const argVars = expr.args.map(a => this.transpileExpr(a));
         // Resolve o tipo estático para encontrar o nome da função Bril
-        const objType  = this.resolveType(expr.object.coolType);
-        const funcName = `${objType}.${expr.method}`;
+        const objType   = this.resolveType(expr.object.coolType);
+        const declClass = this.findDeclaringClass(objType, expr.method);
+        const funcName  = `${declClass}.${expr.method}`;
         return this._emitCall(funcName, objVar, argVars, expr.coolType);
     }
 
     // COOL: metodo(args)  →  self.metodo(args)
     transpileSelfDispatch(expr) {
-        const argVars  = expr.args.map(a => this.transpileExpr(a));
-        const funcName = `${this.currentCls}.${expr.method}`;
+        const argVars   = expr.args.map(a => this.transpileExpr(a));
+        const declClass = this.findDeclaringClass(this.currentCls, expr.method);
+        const funcName  = `${declClass}.${expr.method}`;
         return this._emitCall(funcName, 'self', argVars, expr.coolType);
     }
 
     // COOL: e@Tipo.metodo(args)  →  chama a versão específica de Tipo
     transpileStaticDispatch(expr) {
-        const objVar  = this.transpileExpr(expr.object);
-        const argVars = expr.args.map(a => this.transpileExpr(a));
-        const funcName = `${expr.castType}.${expr.method}`;
+        const objVar    = this.transpileExpr(expr.object);
+        const argVars   = expr.args.map(a => this.transpileExpr(a));
+        const declClass = this.findDeclaringClass(expr.castType, expr.method);
+        const funcName  = `${declClass}.${expr.method}`;
         return this._emitCall(funcName, objVar, argVars, expr.coolType);
     }
 
