@@ -45,6 +45,8 @@ class BrilTranspiler {
         this.tempCount   = 0;        // contador de temporários
         this.labelCount  = 0;        // contador de labels
         this.currentCls  = null;     // classe sendo transpilada
+        this.currentMainInputArgs = [];
+        this.currentMainInputIndex = 0;
     }
 
     // ─── Utilitários ─────────────────────────────────────────────────────────
@@ -80,6 +82,37 @@ class BrilTranspiler {
     // Resolve SELF_TYPE para o nome da classe atual
     resolveType(type) {
         return type === 'SELF_TYPE' ? this.currentCls : type;
+    }
+
+    countInputCalls(node) {
+        if (!node || typeof node !== 'object') return 0;
+
+        let count = 0;
+        const isInputCall = node.type === 'dispatch' || node.type === 'self_dispatch' || node.type === 'static_dispatch'
+            ? node.method === 'in_int' || node.method === 'in_string'
+            : false;
+
+        if (isInputCall) count += 1;
+
+        for (const value of Object.values(node)) {
+            if (!value || typeof value !== 'object') continue;
+            if (value === node) continue;
+            if (Array.isArray(value)) {
+                for (const item of value) {
+                    count += this.countInputCalls(item);
+                }
+            } else if (value.type) {
+                count += this.countInputCalls(value);
+            }
+        }
+
+        return count;
+    }
+
+    nextMainInputArg() {
+        const arg = this.currentMainInputArgs[this.currentMainInputIndex];
+        this.currentMainInputIndex += 1;
+        return arg || null;
     }
 
     // ─── Entrada principal ────────────────────────────────────────────────────
@@ -139,14 +172,20 @@ class BrilTranspiler {
                 { op: 'ret', args: ['self'] },
             ],
         });
-        define('IO.in_string', 'int', [
-            { op: 'const', dest: 'r', type: 'int', value: 0 },
-            { op: 'ret', args: ['r'] },
-        ]);
-        define('IO.in_int', 'int', [
-            { op: 'const', dest: 'r', type: 'int', value: 0 },
-            { op: 'ret', args: ['r'] },
-        ]);
+        this.functions.push({
+            name: 'IO.in_string', type: 'int',
+            args: [{ name: 'self', type: 'int' }, { name: 'input', type: 'int' }],
+            instrs: [
+                { op: 'ret', args: ['input'] },
+            ],
+        });
+        this.functions.push({
+            name: 'IO.in_int', type: 'int',
+            args: [{ name: 'self', type: 'int' }, { name: 'input', type: 'int' }],
+            instrs: [
+                { op: 'ret', args: ['input'] },
+            ],
+        });
 
         define('String.length', 'int', [
             { op: 'const', dest: 'r', type: 'int', value: 0 },
@@ -208,13 +247,21 @@ class BrilTranspiler {
         // Nome da função Bril
         const funcName = isMain ? 'main' : `${cls.name}.${method.name}`;
 
+        this.currentMainInputArgs = [];
+        this.currentMainInputIndex = 0;
+
+        if (isMain) {
+            const inputCount = this.countInputCalls(method.body);
+            this.currentMainInputArgs = Array.from({ length: inputCount }, (_, i) => ({
+                name: `arg${i}`,
+                type: 'int'
+            }));
+        }
+
         // Parâmetros: self implícito + formais do método
         // main não leva self (especificação Bril)
         const args = isMain
-            ? method.formals.map(f => ({
-                name: f.name,
-                type: this.brilType(f.declType)
-              }))
+            ? this.currentMainInputArgs
             : [
                 { name: 'self', type: 'int' },
                 ...method.formals.map(f => ({
@@ -536,7 +583,10 @@ class BrilTranspiler {
     _emitCall(funcName, selfVar, argVars, coolReturnType) {
         const dest       = this.freshTemp('r');
         const returnType = this.brilType(coolReturnType || 'Object');
-        const allArgs    = selfVar ? [selfVar, ...argVars] : argVars;
+        const isInputBuiltin = funcName === 'IO.in_int' || funcName === 'IO.in_string';
+        const nextInputArg = isInputBuiltin ? this.nextMainInputArg() : null;
+        const inputArgs = nextInputArg ? [nextInputArg.name] : [];
+        const allArgs    = selfVar ? [selfVar, ...inputArgs, ...argVars] : [...inputArgs, ...argVars];
 
         // Se o tipo de retorno for Object (void no COOL), emite efeito
         // e devolve um int 0 como placeholder

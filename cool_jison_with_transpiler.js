@@ -296,14 +296,9 @@ if (errors.length > 0) {
 }
 console.log("Análise semântica ok");
 
-// Salva AST anotada
-const astFile = file.replace(".cool", ".ast.json");
-fs.writeFileSync(astFile, JSON.stringify(ast, null, 2), "utf8");
-console.log(`AST anotada salva em: ${astFile}`);
-
 // ── 3. Transpilação COOL → Bril ──────────────────────────────────────────────
 const brilProgram = new BrilTranspiler(ast, analyzer.classTable).transpile();
 
-const brilFile = file.replace(".cool", ".bril.json");
+const brilFile = file.replace(".cool", ".bril");
 fs.writeFileSync(brilFile, JSON.stringify(brilProgram, null, 2), "utf8");
 console.log(`Bril JSON salvo em:   ${brilFile}`);
