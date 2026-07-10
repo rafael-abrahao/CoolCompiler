@@ -1,0 +1,471 @@
+{
+  "functions": [
+    {
+      "name": "Object.abort",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": []
+        }
+      ]
+    },
+    {
+      "name": "Object.type_name",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "r",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "r"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "Object.copy",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "IO.out_string",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "x",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IO.out_int",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "x",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "print",
+          "args": [
+            "x"
+          ]
+        },
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IO.in_string",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "input",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "input"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IO.in_int",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "input",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "input"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "String.length",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "r",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "r"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "String.concat",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "s",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "String.substr",
+      "type": "int",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "i",
+          "type": "int"
+        },
+        {
+          "name": "l",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "ret",
+          "args": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Main.power",
+      "args": [
+        {
+          "name": "self",
+          "type": "int"
+        },
+        {
+          "name": "base",
+          "type": "int"
+        },
+        {
+          "name": "exp",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "i0",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "op": "id",
+          "dest": "resultado",
+          "type": "int",
+          "args": [
+            "i0"
+          ]
+        },
+        {
+          "op": "const",
+          "dest": "i1",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "id",
+          "dest": "i",
+          "type": "int",
+          "args": [
+            "i1"
+          ]
+        },
+        {
+          "op": "jmp",
+          "labels": [
+            "while_check_0"
+          ]
+        },
+        {
+          "label": "while_check_0"
+        },
+        {
+          "op": "lt",
+          "dest": "v2",
+          "type": "bool",
+          "args": [
+            "i",
+            "exp"
+          ]
+        },
+        {
+          "op": "br",
+          "args": [
+            "v2"
+          ],
+          "labels": [
+            "while_body_1",
+            "while_end_2"
+          ]
+        },
+        {
+          "label": "while_body_1"
+        },
+        {
+          "op": "mul",
+          "dest": "v3",
+          "type": "int",
+          "args": [
+            "resultado",
+            "base"
+          ]
+        },
+        {
+          "op": "id",
+          "dest": "resultado",
+          "type": "int",
+          "args": [
+            "v3"
+          ]
+        },
+        {
+          "op": "const",
+          "dest": "i4",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "op": "add",
+          "dest": "v5",
+          "type": "int",
+          "args": [
+            "i",
+            "i4"
+          ]
+        },
+        {
+          "op": "id",
+          "dest": "i",
+          "type": "int",
+          "args": [
+            "v5"
+          ]
+        },
+        {
+          "op": "jmp",
+          "labels": [
+            "while_check_0"
+          ]
+        },
+        {
+          "label": "while_end_2"
+        },
+        {
+          "op": "const",
+          "dest": "w6",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "ret",
+          "args": [
+            "resultado"
+          ]
+        }
+      ],
+      "type": "int"
+    },
+    {
+      "name": "main",
+      "args": [
+        {
+          "name": "arg0",
+          "type": "int"
+        },
+        {
+          "name": "arg1",
+          "type": "int"
+        }
+      ],
+      "instrs": [
+        {
+          "op": "const",
+          "dest": "self",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "op": "call",
+          "dest": "r0",
+          "type": "int",
+          "funcs": [
+            "IO.in_int"
+          ],
+          "args": [
+            "self",
+            "arg0"
+          ]
+        },
+        {
+          "op": "id",
+          "dest": "base",
+          "type": "int",
+          "args": [
+            "r0"
+          ]
+        },
+        {
+          "op": "call",
+          "dest": "r1",
+          "type": "int",
+          "funcs": [
+            "IO.in_int"
+          ],
+          "args": [
+            "self",
+            "arg1"
+          ]
+        },
+        {
+          "op": "id",
+          "dest": "expoente",
+          "type": "int",
+          "args": [
+            "r1"
+          ]
+        },
+        {
+          "op": "const",
+          "dest": "resultado",
+          "type": "int",
+          "value": 0
+        },
+        {
+          "op": "call",
+          "dest": "r2",
+          "type": "int",
+          "funcs": [
+            "Main.power"
+          ],
+          "args": [
+            "self",
+            "base",
+            "expoente"
+          ]
+        },
+        {
+          "op": "id",
+          "dest": "resultado",
+          "type": "int",
+          "args": [
+            "r2"
+          ]
+        },
+        {
+          "op": "call",
+          "dest": "r3",
+          "type": "int",
+          "funcs": [
+            "IO.out_int"
+          ],
+          "args": [
+            "self",
+            "resultado"
+          ]
+        },
+        {
+          "op": "ret",
+          "args": []
+        }
+      ]
+    }
+  ]
+}

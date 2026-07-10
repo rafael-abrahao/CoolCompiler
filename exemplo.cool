@@ -1,0 +1,25 @@
+class Main inherits IO {
+
+    -- calcula base^exp usando multiplicação repetida
+    power(base : Int, exp : Int) : Int {
+        let resultado : Int <- 1,
+            i : Int <- 0
+        in {
+            while i < exp loop {
+                resultado <- resultado * base;
+                i <- i + 1;
+            } pool;
+            resultado;
+        }
+    };
+
+    main() : Object {
+        let base : Int <- in_int(),
+            expoente : Int <- in_int(),
+            resultado : Int
+        in {
+            resultado <- power(base, expoente);
+            out_int(resultado);
+        }
+    };
+};
